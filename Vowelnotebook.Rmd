@@ -1,0 +1,87 @@
+---
+title: "Vowel Notebook"
+output: html_notebook
+---
+
+# Let's study the Vowel dataset
+```{r}
+vowel <- read.table('vowel.data',header=FALSE)
+names(vowel)[11]<-'class'
+n<-nrow(vowel)
+```
+## Visualisation
+```{r}
+plot(vowel[,1:5],col=vowel[,11],pch=3)
+```
+## split the data
+```{r}
+ntrain<-round(2*n/3)
+ntest<-n-ntrain
+train<-sample(n,ntrain)
+vowel.train<-vowel[train,]
+vowel.test<-vowel[-train,]
+```
+## let's train some classifiers
+### LDA
+```{r}
+fit.lda<- lda(class~.,data=vowel.train)
+pred.lda<-predict(fit.lda,newdata=vowel.test)
+perf <-table(vowel.test$class,pred.lda$class)
+print(perf)
+err.lda <- 1-sum(diag(perf))/ntest  # error rate
+```
+### QDA
+```{r}
+fit.qda<- qda(class~.,data=vowel.train)
+pred.qda<-predict(fit.qda,newdata=vowel.test)
+perf <-table(vowel.test$class,pred.qda$class)
+print(perf)
+err.qda <-1-sum(diag(perf))/ntest  # error rate
+```
+### Naive Bayes
+```{r}
+fit.nb<- naive_bayes(as.factor(class)~.,data=vowel.train)
+pred.nb<-predict(fit.nb,newdata=vowel.test,type="class")
+perf <-table(vowel.test$class,pred.nb)
+print(perf)
+err.nb <-1-sum(diag(perf))/ntest  # error rate
+```
+###Logistic regression
+```{r}
+library(nnet)#for multinom
+```
+
+```{r}
+fit.logreg<- multinom(as.factor(class)~.,data=vowel.train)
+pred.logreg<-predict(fit.logreg,newdata=vowel.test,type='class')
+perf <-table(vowel.test$class,pred.logreg)
+print(perf)
+err.logreg <-1-sum(diag(perf))/ntest  # error rate
+```
+```{r}
+print(c(err.lda,err.qda,err.nb,err.logreg))
+```
+## Compare the performances of classifiers with 10 replications
+```{r}
+M<-10
+ERR<-matrix(0,M,4)
+for(i in 1:M){
+  train<-sample(n,ntrain)
+  vowel.train<-vowel[train,]
+  vowel.test<-vowel[-train,]
+  fit.lda<- lda(class~.,data=vowel.train)
+  pred.lda<-predict(fit.lda,newdata=vowel.test)
+  ERR[i,1]<-mean(vowel.test$class !=pred.lda$class)
+  fit.qda<- qda(class~.,data=vowel.train)
+  pred.qda<-predict(fit.qda,newdata=vowel.test)
+  ERR[i,2]<-mean(vowel.test$class !=pred.qda$class)
+  fit.nb<- naive_bayes(as.factor(class)~.,data=vowel.train)
+  pred.nb<-predict(fit.nb,newdata=vowel.test,type="class")
+  ERR[i,3]<-mean(vowel.test$class !=pred.nb)
+  fit.logreg<- multinom(as.factor(class)~.,data=vowel.train)
+  pred.logreg<-predict(fit.logreg,newdata=vowel.test,type='class',trace=FALSE)
+  ERR[i,4]<-mean(vowel.test$class != pred.logreg)
+}
+
+boxplot(ERR,ylab="Test error rate",names=c("LDA","QDA","NB","LR"))
+```
