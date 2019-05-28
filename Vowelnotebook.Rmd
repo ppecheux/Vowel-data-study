@@ -24,6 +24,10 @@ vowel.test<-vowel[-train,]
 ## let's train some classifiers
 ### LDA
 ```{r}
+library(MASS)
+```
+
+```{r}
 fit.lda<- lda(class~.,data=vowel.train)
 pred.lda<-predict(fit.lda,newdata=vowel.test)
 perf <-table(vowel.test$class,pred.lda$class)
@@ -40,6 +44,7 @@ err.qda <-1-sum(diag(perf))/ntest  # error rate
 ```
 ### Naive Bayes
 ```{r}
+library(naivebayes)
 fit.nb<- naive_bayes(as.factor(class)~.,data=vowel.train)
 pred.nb<-predict(fit.nb,newdata=vowel.test,type="class")
 perf <-table(vowel.test$class,pred.nb)
@@ -85,3 +90,36 @@ for(i in 1:M){
 
 boxplot(ERR,ylab="Test error rate",names=c("LDA","QDA","NB","LR"))
 ```
+
+##Compare Unisg 5 cross validation
+```{r}
+K<-5
+folds=sample(1:K,ntrain,replace=TRUE)
+CV<-matrix(0,K,4)
+
+for(k in (1:K)){
+  fit.lda<- lda(class~.,data=vowel.train[folds!=k,])
+  pred.lda<-predict(fit.lda,newdata=vowel.train[folds==k,])
+  CV[k,1]<-sum(pred.lda$class!=vowel.train$class[folds==k])
+  fit.qda<- qda(class~.,data=vowel.train[folds!=k,])
+  pred.qda<-predict(fit.qda,newdata=vowel.train[folds==k,])
+  CV[k,2]<-sum(pred.qda$class!=vowel.train$class[folds==k])
+  fit.nb<- naive_bayes(as.factor(class)~.,data=vowel.train[folds!=k,])
+  pred.nb<-predict(fit.nb,newdata=vowel.train[folds==k,],type="class")
+  CV[k,3]<-sum(pred.nb!=vowel.train$class[folds==k])
+  fit.logreg<- multinom(as.factor(class)~.,data=vowel.train[folds!=k,],trace=FALSE)
+  pred.logreg<-predict(fit.logreg,newdata=vowel.train[folds==k,],type='class')
+  CV[k,4]<-sum(pred.logreg!=vowel.train$class[folds==k])
+}
+err_cv=colSums(CV)/ntrain
+print(err_cv)
+```
+We see that QDA classifier is the best classifier on the train set
+
+```{r}
+fit.qda<- qda(class~.,data=vowel.train)
+pred.qda<-predict(fit.qda,newdata=vowel.test)
+err<- mean(pred.qda$class!=vowel.test$class)
+err
+```
+And that is the error rate on the test set
